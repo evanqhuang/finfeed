@@ -1,10 +1,10 @@
 {
-  "name": "video-stream-app",
+  "name": "finfeed-web",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
+    "build": "npm install && tsc",
     "start": "node dist/index.js"
   },
   "keywords": [],
@@ -13,7 +13,10 @@
   "description": "",
   "dependencies": {
     "dotenv": "^16.5.0",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.14.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
