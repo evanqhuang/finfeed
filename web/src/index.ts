@@ -51,7 +51,10 @@ wss.on('connection', (ws, req) => {
   }
 
   if (url === '/view') {
-    const ip = req.socket.remoteAddress || 'Unknown IP';
+    const ip =
+      req.headers['cf-connecting-ip'] || // Real client IP from Cloudflare
+      req.headers['x-forwarded-for'] || // Real client IP from reverse proxies
+      req.socket.remoteAddress || 'Unknown IP';
     const userAgent = req.headers['user-agent'] || 'Unknown User-Agent';
     const protocol = req.headers['sec-websocket-protocol'] || 'None';
     const headers = JSON.stringify(req.headers, null, 2);
@@ -59,7 +62,8 @@ wss.on('connection', (ws, req) => {
     console.log(`👀 Viewer connected:
       - IP: ${ip}
       - User-Agent: ${userAgent}
-      - Protocol: ${protocol}`);
+      - Protocol: ${protocol}
+      - Headers: ${headers}`);
 
     // Fetch location details for the IP
     if (ip !== 'Unknown IP' && ip !== '::1') { // Exclude localhost
