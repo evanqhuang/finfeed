@@ -59,6 +59,7 @@ wss.on('connection', (ws, req) => {
 // 🖥️ Handle raw upgrade w/ auth + IP
 server.on('upgrade', (req, socket, head) => {
   const pathname = req.url || '';
+  console.log(`🔗 Upgrade request: ${pathname}`);
 
   if (pathname === '/stream') {
     if (!isAuthorized(req)) {
@@ -87,7 +88,7 @@ app.get('/', (_, res) => {
         <h1>📺 Live Feed</h1>
         <img id="stream" width="640" />
         <script>
-          const ws = new WebSocket('ws://' + location.host + '/view');
+          const ws = new WebSocket('wss://' + location.host + '/view');
           const img = document.getElementById('stream');
           ws.onmessage = e => {
             img.src = 'data:image/jpeg;base64,' + e.data;
