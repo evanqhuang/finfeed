@@ -1,12 +1,12 @@
 import express from 'express';
-import http from 'http'; // Use HTTP instead of HTTPS
+import http from 'http';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
 const app = express();
-const PORT = process.env.WEB_PORT; // Use a custom port for HTTP
+const PORT = process.env.PORT;
 
 // Middleware for basic authentication
 const basicAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
