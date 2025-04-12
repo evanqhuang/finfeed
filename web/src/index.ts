@@ -80,12 +80,16 @@ server.on('upgrade', (req, socket, head) => {
   });
 });
 
+// Serve static files from the "public" directory
+app.use(express.static('public'));
+
 // 👁️ Web view
 app.get('/', (_, res) => {
   res.send(`
     <html>
       <head>
         <title>FinFeed</title>
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <style>
           body {
             margin: 0;
@@ -106,7 +110,7 @@ app.get('/', (_, res) => {
           #tank {
             position: relative;
             width: 640px;
-            height: 480px;
+            height: 360px; /* Adjusted for 16:9 aspect ratio */
             margin: 20px auto;
             border: 10px solid #2E8B57;
             border-radius: 20px;
@@ -151,6 +155,47 @@ app.get('/', (_, res) => {
             100% {
               transform: translateY(-100vh) scale(1);
               opacity: 0;
+            }
+          }
+
+          /* Responsive styles for smaller screens */
+          @media (max-width: 768px) {
+            h1 {
+              font-size: 2em;
+              padding: 15px;
+            }
+
+            #tank {
+              width: 90%;
+              height: auto;
+              aspect-ratio: 16 / 9; /* Maintain 16:9 aspect ratio */
+              margin: 10px auto;
+              border-width: 5px;
+            }
+
+            .bubble {
+              width: 15px;
+              height: 15px;
+            }
+          }
+
+          @media (max-width: 480px) {
+            h1 {
+              font-size: 1.5em;
+              padding: 10px;
+            }
+
+            #tank {
+              width: 100%;
+              height: auto;
+              aspect-ratio: 16 / 9; /* Maintain 16:9 aspect ratio */
+              margin: 5px auto;
+              border-width: 3px;
+            }
+
+            .bubble {
+              width: 10px;
+              height: 10px;
             }
           }
         </style>
