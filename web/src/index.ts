@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import dotenv from 'dotenv';
+import fetch from 'node-fetch'; // Add this import for making API requests
 
 dotenv.config();
 
@@ -50,9 +51,42 @@ wss.on('connection', (ws, req) => {
   }
 
   if (url === '/view') {
-    console.log('👀 Viewer connected');
+    const ip = req.socket.remoteAddress || 'Unknown IP';
+    const userAgent = req.headers['user-agent'] || 'Unknown User-Agent';
+    const protocol = req.headers['sec-websocket-protocol'] || 'None';
+    const headers = JSON.stringify(req.headers, null, 2);
+
+    console.log(`👀 Viewer connected:
+      - IP: ${ip}
+      - User-Agent: ${userAgent}
+      - Protocol: ${protocol}`);
+
+    // Fetch location details for the IP
+    if (ip !== 'Unknown IP' && ip !== '::1') { // Exclude localhost
+      fetch(`http://ip-api.com/json/${ip}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.status === 'success') {
+            console.log(`🌍 Location for IP ${ip}: 
+              - Country: ${data.country}
+              - Region: ${data.regionName}
+              - City: ${data.city}
+              - Latitude: ${data.lat}
+              - Longitude: ${data.lon}`);
+          } else {
+            console.log(`⚠️ Could not fetch location for IP ${ip}: ${data.message}`);
+          }
+        })
+        .catch((error) => {
+          console.log(`❌ Error fetching location for IP ${ip}: ${error.message}`);
+        });
+    }
+
     viewers.add(ws);
-    ws.on('close', () => viewers.delete(ws));
+    ws.on('close', () => {
+      console.log(`👀 Viewer disconnected from IP: ${ip}`);
+      viewers.delete(ws);
+    });
   }
 });
 
