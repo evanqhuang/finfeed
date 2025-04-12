@@ -10,6 +10,7 @@ const PORT = process.env.WEB_PORT; // Use a custom port for HTTP
 
 // Middleware for basic authentication
 const basicAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.log('Basic Auth Middleware triggered');
   const auth = {
     login: process.env.AUTH_LOGIN, // Read login from environment variable
     password: process.env.AUTH_PASSWORD, // Read password from environment variable
@@ -19,6 +20,7 @@ const basicAuthMiddleware = (req: express.Request, res: express.Response, next: 
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
 
   if (login && password && login === auth.login && password === auth.password) {
+    console.log('Authentication successful');
     return next();
   }
 
@@ -28,10 +30,12 @@ const basicAuthMiddleware = (req: express.Request, res: express.Response, next: 
 
 // Middleware to restrict access to a specific IP
 const ipWhitelistMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.log('IP Whitelist Middleware triggered');
   const allowedIP = process.env.ALLOWED_IP;
   const requestIP = req.ip;
 
   if (requestIP === allowedIP) {
+    console.log(`Access granted to IP: ${requestIP}`);
     return next();
   }
 
