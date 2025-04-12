@@ -1,43 +1,39 @@
 import cv2
-import socket
-import struct
+import websockets
+import asyncio
+import base64
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-WEB_HOST = os.getenv('WEB_HOST', 'localhost')  # Default to localhost if ENV is not set
-WEB_PORT = os.getenv('WEB_PORT')  
 
-# Initialize video capture
-cap = cv2.VideoCapture(0)  # Use the first camera
-if not cap.isOpened():
-    print("Error: Could not open video stream.")
-    exit()
+AUTH_LOGIN = os.getenv("AUTH_LOGIN")
+AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
+SERVER_IP = os.getenv("SERVER_IP", "localhost")
+PORT = os.getenv("PORT", "3000")
 
-# Create a socket connection
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((WEB_HOST, WEB_PORT))
+# Encode credentials as base64
+auth_string = f"{AUTH_LOGIN}:{AUTH_PASSWORD}"
+auth_b64 = base64.b64encode(auth_string.encode()).decode("utf-8")
 
-try:
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame.")
-            break
+async def stream():
+    uri = f"ws://{SERVER_IP}:{PORT}/stream"
+    headers = {
+        "Authorization": f"Basic {auth_b64}"
+    }
 
-        # Encode the frame as JPEG
-        _, buffer = cv2.imencode('.jpg', frame)
+    cap = cv2.VideoCapture(0)
 
-        # Send the size of the frame
-        frame_size = len(buffer)
-        client_socket.sendall(struct.pack('!I', frame_size))
+    async with websockets.connect(uri, additional_headers=headers) as websocket:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                continue
 
-        # Send the frame data
-        client_socket.sendall(buffer)
+            _, buffer = cv2.imencode('.jpg', frame)
+            jpg_base64 = base64.b64encode(buffer).decode('utf-8')
 
-except KeyboardInterrupt:
-    print("Streaming stopped.")
+            await websocket.send(jpg_base64)
+            await asyncio.sleep(0.03)  # ~30 fps
 
-finally:
-    cap.release()
-    client_socket.close()
+asyncio.run(stream())

@@ -1,98 +1,103 @@
 import express from 'express';
 import http from 'http';
-import fs from 'fs';
-import path from 'path';
+import { WebSocketServer, WebSocket } from 'ws';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
 const app = express();
-const PORT = process.env.PORT;
+const server = http.createServer(app);
+const wss = new WebSocketServer({ noServer: true }); // manual upgrade
 
-// Middleware for basic authentication
-const basicAuthMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.log('Basic Auth Middleware triggered');
-  const auth = {
-    login: process.env.AUTH_LOGIN, // Read login from environment variable
-    password: process.env.AUTH_PASSWORD, // Read password from environment variable
-  };
+const PORT = process.env.PORT || 3000;
+const AUTH_LOGIN = process.env.AUTH_LOGIN;
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
+const ALLOWED_IP = process.env.ALLOWED_IP;
 
-  const b64auth = (req.headers.authorization || '').split(' ')[1] || '';
+// 🧠 Auth helper
+function isAuthorized(req: http.IncomingMessage): boolean {
+  const authHeader = req.headers.authorization || '';
+  const b64auth = authHeader.split(' ')[1] || '';
   const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':');
+  return login === AUTH_LOGIN && password === AUTH_PASSWORD;
+}
 
-  if (login && password && login === auth.login && password === auth.password) {
-    console.log('Authentication successful');
-    return next();
+// 🔐 IP whitelist
+function isAllowedIP(req: http.IncomingMessage): boolean {
+  const ip = req.socket.remoteAddress || '';
+  return ip === ALLOWED_IP;
+}
+
+// 👁️ viewer set + last frame
+let viewers = new Set<WebSocket>();
+let latestFrame = '';
+
+wss.on('connection', (ws, req) => {
+  const url = req.url || '';
+  console.log(`🔗 New connection request: ${url}`);
+
+  if (url === '/stream') {
+    console.log('📡 Pi connected');
+    ws.on('message', (data: Buffer) => {
+      latestFrame = data.toString();
+      viewers.forEach((viewer) => {
+        if (viewer.readyState === WebSocket.OPEN) {
+          viewer.send(latestFrame);
+        }
+      });
+    });
+    ws.on('close', () => console.log('Pi disconnected'));
   }
 
-  res.set('WWW-Authenticate', 'Basic realm="401"'); // Change this as needed
-  res.status(401).send('Authentication required.');
-};
+  if (url === '/view') {
+    console.log('👀 Viewer connected');
+    viewers.add(ws);
+    ws.on('close', () => viewers.delete(ws));
+  }
+});
 
-// Middleware to restrict access to a specific IP
-const ipWhitelistMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.log('IP Whitelist Middleware triggered');
-  const allowedIP = process.env.ALLOWED_IP;
-  const requestIP = req.ip;
+// 🖥️ Handle raw upgrade w/ auth + IP
+server.on('upgrade', (req, socket, head) => {
+  const pathname = req.url || '';
 
-  if (requestIP === allowedIP) {
-    console.log(`Access granted to IP: ${requestIP}`);
-    return next();
+  if (pathname === '/stream') {
+    if (!isAuthorized(req)) {
+      console.log('❌ Unauthorized access attempt');
+      socket.write('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="Stream"\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    // if (!isAllowedIP(req)) {
+    //   socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+    //   socket.destroy();
+    //   return;
+    // }
   }
 
-  console.warn(`Unauthorized access attempt from IP: ${requestIP}`);
-  res.status(403).send('Forbidden: Access is restricted to a specific IP.');
-};
-
-// Apply authentication and IP filtering middleware to the `/stream` endpoint
-app.post('/stream', basicAuthMiddleware, (req, res) => {
-  const streamPath = path.join(__dirname, 'stream.mp4');
-  const writeStream = fs.createWriteStream(streamPath);
-
-  req.pipe(writeStream);
-
-  writeStream.on('finish', () => {
-    res.status(200).send('Stream received.');
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.emit('connection', ws, req);
   });
-
-  writeStream.on('error', (err) => {
-    console.error('Error writing stream:', err);
-    res.status(500).send('Error receiving stream.');
-  });
 });
 
-// Serve the video stream on the homepage
-app.get('/', (req, res) => {
-  const streamPath = path.join(__dirname, 'stream.mp4');
-
-  if (fs.existsSync(streamPath)) {
-    res.send(`
-      <html>
-        <body>
-          <h1>Video Stream</h1>
-          <video controls autoplay>
-            <source src="/video" type="video/mp4">
-          </video>
-        </body>
-      </html>
-    `);
-  } else {
-    res.send('<h1>No video stream available</h1>');
-  }
+// 👁️ Web view
+app.get('/', (_, res) => {
+  res.send(`
+    <html>
+      <body>
+        <h1>📺 Live Feed</h1>
+        <img id="stream" width="640" />
+        <script>
+          const ws = new WebSocket('ws://' + location.host + '/view');
+          const img = document.getElementById('stream');
+          ws.onmessage = e => {
+            img.src = 'data:image/jpeg;base64,' + e.data;
+          };
+        </script>
+      </body>
+    </html>
+  `);
 });
 
-// Endpoint to serve the video file
-app.get('/video', (req, res) => {
-  const streamPath = path.join(__dirname, 'stream.mp4');
-
-  if (fs.existsSync(streamPath)) {
-    res.setHeader('Content-Type', 'video/mp4');
-    fs.createReadStream(streamPath).pipe(res);
-  } else {
-    res.status(404).send('Video not found.');
-  }
-});
-
-// Start the HTTP server
-http.createServer(app).listen(PORT, () => {
-  console.log(`HTTP Server running on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`🚀 Auth-enabled WebSocket server on ${PORT}`);
 });
