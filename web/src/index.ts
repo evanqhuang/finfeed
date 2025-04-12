@@ -44,7 +44,7 @@ const ipWhitelistMiddleware = (req: express.Request, res: express.Response, next
 };
 
 // Apply authentication and IP filtering middleware to the `/stream` endpoint
-app.post('/stream', basicAuthMiddleware, ipWhitelistMiddleware, (req, res) => {
+app.post('/stream', basicAuthMiddleware, (req, res) => {
   const streamPath = path.join(__dirname, 'stream.mp4');
   const writeStream = fs.createWriteStream(streamPath);
 
