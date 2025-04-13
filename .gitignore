@@ -21,4 +21,4 @@ logs/
 .vscode/
 .idea/
 *venv
-*hls*
+hls/
