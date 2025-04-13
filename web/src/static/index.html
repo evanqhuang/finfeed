@@ -132,7 +132,9 @@
     <script>
         // 🎥 HLS video stream
         const video = document.getElementById('video');
-        if (Hls.isSupported()) {
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = '/hls/stream.m3u8';
+        } else if (Hls.isSupported()) {
             const hls = new Hls({
                 debug: false,
                 enableWorker: true,
@@ -174,9 +176,6 @@
                 }
             });
 
-        }
-        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = '/hls/stream.m3u8';
         } else {
             alert('Your browser does not support HLS.');
         }
