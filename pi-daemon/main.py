@@ -8,12 +8,12 @@ load_dotenv()
 
 AUTH_LOGIN = os.getenv("AUTH_LOGIN")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
-SERVER_IP = os.getenv("SERVER_IP", "localhost")
-PORT = os.getenv("PORT", "3000")
-ENV = os.getenv("ENV", "dev")
+SERVER_IP =  "localhost"
+PORT = "3000"
+ENV = os.getenv("ENV")
 
 if ENV == "prod":
-    SERVER_IP = "finfeed.evanqhuang.com"
+    SERVER_IP = os.getenv("SERVER_IP")
     PORT = "443"
 
 WIDTH, HEIGHT = 1280, 720
