@@ -1,0 +1,209 @@
+<html>
+
+<head>
+    <title>FinFeed</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest/dist/hls.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #87CEEB, #4682B4);
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            font-size: 3em;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        #tank {
+            position: relative;
+            width: 640px;
+            height: 360px;
+            /* Adjusted for 16:9 aspect ratio */
+            margin: 20px auto;
+            border: 10px solid #2E8B57;
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            background: rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .bubbles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bubble {
+            position: absolute;
+            bottom: -50px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            opacity: 0.8;
+            animation: rise ease-in forwards;
+        }
+
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(0.5);
+                opacity: 0.8;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Responsive styles for smaller screens */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+                padding: 15px;
+            }
+
+            #tank {
+                width: 90%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+                /* Maintain 16:9 aspect ratio */
+                margin: 10px auto;
+                border-width: 5px;
+            }
+
+            .bubble {
+                width: 15px;
+                height: 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+                padding: 10px;
+            }
+
+            #tank {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 16 / 9;
+                /* Maintain 16:9 aspect ratio */
+                margin: 5px auto;
+                border-width: 3px;
+            }
+
+            .bubble {
+                width: 10px;
+                height: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🐟 FinFeed</h1>
+
+    <div class="bubbles" id="bubbles-container"></div>
+
+    <div id="tank">
+        <video id="video" controls autoplay></video>
+    </div>
+
+    <script>
+        // 🎥 HLS video stream
+        const video = document.getElementById('video');
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                debug: false,
+                enableWorker: true,
+                lowlatencyMode: false,
+                liveDurationInfinity: true,
+            });
+
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+                console.log('Media attached');
+                hls.loadSource('/hls/stream.m3u8');
+            });
+
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                console.log('Manifest parsed, trying to play');
+                video.play().catch(function (error) {
+                    console.log('Playback failed:', error);
+                });
+            });
+
+            hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.log('Fatal network error... trying to recover');
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.log('Fatal media error... trying to recover');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            console.log('Fatal error... trying to restart');
+                            hls.destroy();
+                            initPlayer();
+                            break;
+                    }
+                }
+            });
+
+        }
+        else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = '/hls/stream.m3u8';
+        } else {
+            alert('Your browser does not support HLS.');
+        }
+
+        // 🎈 Bubble creation logic
+        const container = document.getElementById('bubbles-container');
+
+        function createBubble() {
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            const size = Math.random() * 30 + 10;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 100 + '%';
+            bubble.style.animationDuration = (Math.random() * 4 + 4) + 's';
+
+            container.appendChild(bubble);
+
+            // Remove after animation
+            setTimeout(() => {
+                bubble.remove();
+            }, 8000);
+        }
+
+        setInterval(createBubble, 300);
+    </script>
+</body>
+
+</html>
