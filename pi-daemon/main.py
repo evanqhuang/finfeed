@@ -1,14 +1,16 @@
 import os
-import cv2
 import subprocess
 import base64
+import numpy as np
 from dotenv import load_dotenv
+from picamera2 import Picamera2
+from time import sleep
 
 load_dotenv()
 
 AUTH_LOGIN = os.getenv("AUTH_LOGIN")
 AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
-SERVER_IP =  "localhost"
+SERVER_IP = "localhost"
 PORT = "3000"
 ENV = os.getenv("ENV")
 
@@ -22,18 +24,23 @@ auth_header = base64.b64encode(f"{AUTH_LOGIN}:{AUTH_PASSWORD}".encode()).decode(
 upload_base = f"http://{SERVER_IP}:{PORT}/upload"
 
 def stream_webcam_to_hls():
-    cap = cv2.VideoCapture(0)
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
+    # Initialize PiCamera2
+    picam2 = Picamera2()
 
-    if not cap.isOpened():
-        print("Error: Could not open webcam.")
-        return
+    # Configure camera
+    config = picam2.create_video_configuration(main={"size": (WIDTH, HEIGHT), "format": "BGR888"})
+    picam2.configure(config)
+
+    # Start the camera
+    picam2.start()
+
+    # Give the camera a moment to adjust
+    sleep(2)
 
     ffmpeg_command = [
         "ffmpeg",
         "-f", "rawvideo",
-        "-pix_fmt", "bgr24", 
+        "-pix_fmt", "bgr24",
         "-s", f"{WIDTH}x{HEIGHT}",
         "-i", "-",
         "-c:v", "libx264",
@@ -55,20 +62,24 @@ def stream_webcam_to_hls():
     ffmpeg_process = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE)
 
     try:
+        # Warmup frames
+        for _ in range(10):
+            picam2.capture_array()
+
         while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Error: Could not read frame from webcam.")
-                break
+            # Capture a frame
+            frame = picam2.capture_array("main")
+            # Write to ffmpeg's stdin
             ffmpeg_process.stdin.write(frame.tobytes())
     except KeyboardInterrupt:
         print("Stopping stream...")
     finally:
-        cap.release()
+        # Clean up
+        picam2.stop()
         ffmpeg_process.stdin.close()
         ffmpeg_process.terminate()
         ffmpeg_process.wait()
 
-
 if __name__ == "__main__":
     stream_webcam_to_hls()
+
