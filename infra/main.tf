@@ -17,7 +17,7 @@ data "cloudflare_zones" "site" {
 # Create CNAME record for fish subdomain pointing to GitHub Pages
 resource "cloudflare_dns_record" "finfeed" {
   zone_id = local.zone_id
-  name    = "fish"
+  name    = "finfeed"
   type    = "CNAME"
   content = "${var.github_username}.github.io"
   ttl     = 1
