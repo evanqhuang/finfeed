@@ -1,4 +1,2 @@
 python-dotenv
 opencv-python
-websockets
-watchdog

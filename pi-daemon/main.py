@@ -1,27 +1,24 @@
 import os
+import sys
 import cv2
 import subprocess
-import base64
 from dotenv import load_dotenv
 
 load_dotenv()
 
-AUTH_LOGIN = os.getenv("AUTH_LOGIN")
-AUTH_PASSWORD = os.getenv("AUTH_PASSWORD")
-SERVER_IP =  "localhost"
-PORT = "3000"
-ENV = os.getenv("ENV")
+TWITCH_STREAM_KEY = os.getenv("TWITCH_STREAM_KEY")
 
-if ENV == "prod":
-    SERVER_IP = os.getenv("SERVER_IP")
-    PORT = "443"
+if not TWITCH_STREAM_KEY:
+    print("Error: TWITCH_STREAM_KEY is not set in the environment.")
+    sys.exit(1)
 
+RTMP_URL = f"rtmp://live.twitch.tv/app/{TWITCH_STREAM_KEY}"
 WIDTH, HEIGHT = 1280, 720
 
-auth_header = base64.b64encode(f"{AUTH_LOGIN}:{AUTH_PASSWORD}".encode()).decode()
-upload_base = f"http://{SERVER_IP}:{PORT}/upload"
+print(f"Streaming to Twitch with resolution {WIDTH}x{HEIGHT}")
 
-def stream_webcam_to_hls():
+
+def stream_webcam_to_twitch():
     cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
@@ -33,26 +30,34 @@ def stream_webcam_to_hls():
     ffmpeg_command = [
         "ffmpeg",
         "-f", "rawvideo",
-        "-pix_fmt", "bgr24", 
+        "-pix_fmt", "bgr24",
         "-s", f"{WIDTH}x{HEIGHT}",
+        "-r", "30",
         "-i", "-",
+        "-f", "lavfi",
+        "-i", "anullsrc=channel_layout=stereo:sample_rate=44100",
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-pix_fmt", "yuv420p",
         "-profile:v", "baseline",
-        "-level", "3.0",
+        "-level", "3.1",
         "-tune", "zerolatency",
-        "-hls_time", "15",
-        "-hls_list_size", "0",
-        "-hls_flags", "delete_segments+append_list",
-        "-hls_segment_filename", f"{upload_base}/segment_%03d.ts",
-        "-f", "hls",
-        "-method", "PUT",
-        "-headers", f"Authorization: Basic {auth_header}\r\n",
-        f"{upload_base}/stream.m3u8"
+        "-b:v", "2500k",
+        "-maxrate", "2500k",
+        "-bufsize", "5000k",
+        "-g", "60",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-ar", "44100",
+        "-f", "flv",
+        RTMP_URL,
     ]
 
     ffmpeg_process = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE)
+
+    if ffmpeg_process.stdin is None:
+        print("Error: Could not open ffmpeg stdin.")
+        return
 
     try:
         while True:
@@ -71,4 +76,4 @@ def stream_webcam_to_hls():
 
 
 if __name__ == "__main__":
-    stream_webcam_to_hls()
+    stream_webcam_to_twitch()
