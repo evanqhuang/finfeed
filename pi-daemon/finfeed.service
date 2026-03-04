@@ -8,8 +8,8 @@ Type=simple
 User=pi
 WorkingDirectory=/home/pi/finfeed
 EnvironmentFile=/home/pi/finfeed/.env
-ExecStart=/bin/bash -c 'libcamera-vid -t 0 --width 1296 --height 972 --framerate 15 --codec h264 --inline --vflip --bitrate 2500000 -o - | ffmpeg -f h264 -i - -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=44100" -c:v copy -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://live.twitch.tv/app/${TWITCH_STREAM_KEY}"'
-Restart=on-failure
+ExecStart=/bin/bash -c 'libcamera-vid -t 0 --width 960 --height 720 --framerate 15 --codec h264 --inline --vflip --nopreview --bitrate 2500000 -o - | ffmpeg -f h264 -i - -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=44100" -c:v copy -c:a aac -b:a 128k -ar 44100 -f flv "rtmp://live.twitch.tv/app/${TWITCH_STREAM_KEY}"'
+Restart=always
 RestartSec=10
 
 [Install]
